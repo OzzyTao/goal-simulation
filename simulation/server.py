@@ -1,9 +1,9 @@
-from model import PathFindingModel, Obstacle, Goal
+import model
 import mesa
 
 
 def agent_portrayal(agent):
-    if isinstance(agent, Obstacle) :
+    if isinstance(agent, model.Obstacle) :
         return {
         "Shape": "rect",
         "Color": "gray",
@@ -12,7 +12,7 @@ def agent_portrayal(agent):
         "w": 1,
         "h": 1
         }
-    elif isinstance(agent, Goal):
+    elif isinstance(agent, model.Goal):
         portrayal = {
             "Shape": "circle",
             "Color": "green",
@@ -37,5 +37,5 @@ def agent_portrayal(agent):
 
 grid = mesa.visualization.CanvasGrid(agent_portrayal,20,20,500,500)
 server = mesa.visualization.ModularServer(
-    PathFindingModel,[grid],"Robot demo", {'width':20,'height':20,'obs_num':40,"goals_num":2}
+    model.PathFindingModel,[grid],"Robot demo", {'width':20,'height':20,'obs_num':40,"goals_num":3,"goal_zone":0,"path_planning_alg":0}
 )

@@ -1,14 +1,15 @@
 import networkx as nx
 import numpy as np
 from math import sqrt
+from itertools import combinations
 
 NEG_SLOPE_WEIGHT = 0.5
 
-class BenchmarkGoalRecognition:
-    def __init__(self,model,goals):
-        self.model = model
+
+class MastersGoalRecognition:
+    def __init__(self, source, goals):
         self.goals = goals
-        self.trajectory = []
+        self.trajectory = [tuple(source)]
         self.ranking = np.array(range(len(goals)))
 
     def _slope(self, start, end, goal):
@@ -28,19 +29,47 @@ class BenchmarkGoalRecognition:
             start = self.trajectory[-1]
             self.ranking = self._slope_ranks(start,observation)
             for i, goal in enumerate(self.goals):
-                goal.benchmark_rank = self.ranking[i]
+                goal.masters_rank = self.ranking[i]
         self.trajectory.append(observation)
 
+class MirroringGoalRecognition:
+    def __init__(self, source, goals) -> None:
+        self.goals = goals 
+        self.prefix_costs = np.zeros(len(goals))
+        self.trajectory = [tuple(source)]
+        self.ranking = np.array(range(len(goals)))
+        self.optimal_costs = list(map(self._calculate_optimal_cost,goals))
 
+    def _calculate_optimal_cost(self, goal):
+        return goal.cost_func(self.trajectory[0],goal.dest_pos)
+
+    def _update_prefix(self):
+        self.prefix_costs = self.prefix_costs + np.array([goal.cost_func(self.trajectory[-2],self.trajectory[-1]) for goal in self.goals])
+
+    def _ranks(self):
+        scores = []
+        for i, goal in enumerate(self.goals):
+            optimal_cost = self.optimal_costs[i]
+            prefix_cost = self.prefix_costs[i]
+            surfix_cost = goal.cost_func(self.trajectory[-1],goal.dest_pos)
+            scores.append(optimal_cost/(prefix_cost+surfix_cost))
+        order = (-np.array(scores)).argsort()
+        return order.argsort()
+
+    def step(self, observation):
+        self.trajectory.append(observation)
+        self._update_prefix()
+        self.ranking = self._ranks()
+        for i, goal in enumerate(self.goals):
+            goal.mirroring_rank = self.ranking[i]
 
 
 class OnlineGoalRecognition:
-    def __init__(self, model, goals):
+    def __init__(self, source, goals):
         # each goal has a destination and a cost function
-        self.model = model
         self.goals = goals
 
-        self.current_segment = []
+        self.current_segment = [tuple(source)]
         self.slope_ranking = np.array(range(len(goals)))
 
         self.segments = []
@@ -105,23 +134,36 @@ class OnlineGoalRecognition:
             goal.rank = self.ranking[i]
 
 def construct_euclidean_network(scene_config):
+    FULLY_CONNECTED_SIZE = 1
     obs = [tuple(ob) for ob in scene_config.ob]
     G = nx.grid_2d_graph(scene_config.width, scene_config.height)
     for n in G:
-        for dx in [-1,0,1]:
-            for dy in [-1,0,1]:
+        for dx in range(-FULLY_CONNECTED_SIZE,FULLY_CONNECTED_SIZE+1):
+            for dy in range(-FULLY_CONNECTED_SIZE,FULLY_CONNECTED_SIZE+1):
                 target = (n[0]+dx, n[1]+dy)
                 if 0<=target[0]<scene_config.width and 0<=target[1]<scene_config.height:
                     weight = sqrt(dx**2 + dy**2)
-                    if (n in obs) or (target in obs):
-                        weight = 1000
                     G.add_edge(n,target,weight=weight)
     return G
 
+def construct_full_network(scene_config):
+    G = nx.Graph()
+    nodes = []
+    for i in range(scene_config.width):
+        for j in range(scene_config.height):
+            nodes.append((i,j))
+    edges = combinations(nodes, 2)
+    weighted_edges = list(map(lambda e: (e[0],e[1],eu_dist(e[0],e[1])),edges))
+    G.add_nodes_from(nodes)
+    G.add_weighted_edges_from(weighted_edges)
+    return G
+
+
 def apply_obstacles_network(scene_config, network):
-    nodes = network.nodes()
+    G = network.copy()
     obs = [tuple(ob) for ob in scene_config.ob]
-    G =  network.subgraph([node for node in nodes if node not in obs])
+    for u,v in G.edges(obs):
+        G[u][v]['weight'] = 10000
     return G
 
 def eu_dist(a,b):
