@@ -10,6 +10,7 @@ import numpy as np
 import recognition
 import scene
 import path_planning as pp
+import cost_funcs as cf
 
 
 
@@ -110,11 +111,9 @@ class PathFindingModel(mesa.Model):
         self.robot = Robot(2000,self,alg_cls)
         
         ## goal recognition: define cost functions for each goal
-        G = recognition.construct_euclidean_network(scene_config)
-        obstacle_G = recognition.apply_obstacles_network(scene_config,G)
         self.prediction_dests = [scene_config.goal_loc] + fscene.destinations
-        cost_func_direct = lambda x,y: recognition.calculate_cost_network(G,x,y)
-        cost_func_avoid = lambda x,y: recognition.calculate_cost_network(obstacle_G,x,y)
+        cost_func_direct = cf.NetworkCost(scene_config,apply_obstacls=False)
+        cost_func_avoid = cf.NetworkCost(scene_config,apply_obstacls=True)
         cost_funcs = [cost_func_direct, cost_func_avoid]
         self.prediction_goals = []
         for i, goal in enumerate(self.prediction_dests):

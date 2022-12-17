@@ -1,0 +1,11 @@
+__pycache__
+.ipynb_checkpoints
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg-info
+*.egg
+results
+*.code-workspace

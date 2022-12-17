@@ -146,30 +146,30 @@ def construct_euclidean_network(scene_config):
                     G.add_edge(n,target,weight=weight)
     return G
 
-def construct_full_network(scene_config):
-    G = nx.Graph()
-    nodes = []
-    for i in range(scene_config.width):
-        for j in range(scene_config.height):
-            nodes.append((i,j))
-    edges = combinations(nodes, 2)
-    weighted_edges = list(map(lambda e: (e[0],e[1],eu_dist(e[0],e[1])),edges))
-    G.add_nodes_from(nodes)
-    G.add_weighted_edges_from(weighted_edges)
-    return G
+# def construct_full_network(scene_config):
+#     G = nx.Graph()
+#     nodes = []
+#     for i in range(scene_config.width):
+#         for j in range(scene_config.height):
+#             nodes.append((i,j))
+#     edges = combinations(nodes, 2)
+#     weighted_edges = list(map(lambda e: (e[0],e[1],eu_dist(e[0],e[1])),edges))
+#     G.add_nodes_from(nodes)
+#     G.add_weighted_edges_from(weighted_edges)
+#     return G
 
 
-def apply_obstacles_network(scene_config, network):
-    G = network.copy()
-    obs = [tuple(ob) for ob in scene_config.ob]
-    for u,v in G.edges(obs):
-        G[u][v]['weight'] = 10000
-    return G
+# def apply_obstacles_network(scene_config, network):
+#     G = network.copy()
+#     obs = [tuple(ob) for ob in scene_config.ob]
+#     for u,v in G.edges(obs):
+#         G[u][v]['weight'] = 10000
+#     return G
 
-def eu_dist(a,b):
-    (x1,y1) = a
-    (x2,y2) = b
-    return sqrt((x1-x2)**2+(y1-y2)**2)
+# def eu_dist(a,b):
+#     (x1,y1) = a
+#     (x2,y2) = b
+#     return sqrt((x1-x2)**2+(y1-y2)**2)
 
-def calculate_cost_network(network, source, target):
-    return nx.astar_path_length(network,source,target,heuristic=eu_dist,weight="weight")
+# def calculate_cost_network(network, source, target):
+#     return nx.astar_path_length(network,source,target,heuristic=eu_dist,weight="weight")
