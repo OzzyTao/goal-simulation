@@ -159,12 +159,12 @@ def construct_euclidean_network(scene_config):
 #     return G
 
 
-# def apply_obstacles_network(scene_config, network):
-#     G = network.copy()
-#     obs = [tuple(ob) for ob in scene_config.ob]
-#     for u,v in G.edges(obs):
-#         G[u][v]['weight'] = 10000
-#     return G
+def apply_obstacles_network(scene_config, network):
+    G = network.copy()
+    obs = [tuple(ob) for ob in scene_config.ob]
+    for u,v in G.edges(obs):
+        G[u][v]['weight'] = 10000
+    return G
 
 # def eu_dist(a,b):
 #     (x1,y1) = a
