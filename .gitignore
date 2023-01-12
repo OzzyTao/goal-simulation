@@ -1,4 +1,4 @@
-__pycache__
+__pycache__/
 .ipynb_checkpoints
 *.pyc
 *.pyo
@@ -7,5 +7,5 @@ __pycache__
 *.dylib
 *.egg-info
 *.egg
-results
+results/
 *.code-workspace
