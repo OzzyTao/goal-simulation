@@ -100,6 +100,13 @@ class PathFindingModel(mesa.Model):
         self.scene_config = scene_config
         self.grid = mesa.space.MultiGrid(width,height,True)
 
+        ### random scene
+        # fscene = scene.RandomScene(self.random,width,height,obs_num)
+        # fscene.add_candidate_destinations(goals_num)
+        # scene_config = fscene.scene
+        # self.scene_config = scene_config
+        # self.grid = mesa.space.MultiGrid(width,height,True)
+
         ## config agent and its path planning algorithm
         alg_cls = None
         if path_planning_alg == pp.PathPlanningAlgorithm.DWA:
