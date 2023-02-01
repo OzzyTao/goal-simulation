@@ -9,4 +9,13 @@ A python simulation toolkit for testing goal/intent recognition algorithms in mo
 - Visual simulation available for grid space.
 
 ----
+## Example use cases
+1. Visual simulation with the command
+```console
+$ mesa runserver
+```
+The parameters for the simulation can be changed in server.py
 
+
+2. Run experiment in batch
+Please see experiment.ipynb as an example 
