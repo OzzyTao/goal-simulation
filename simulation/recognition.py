@@ -26,7 +26,7 @@ class MastersGoalRecognition:
 
     def step(self, observation):
         if self.trajectory:
-            start = self.trajectory[-1]
+            start = self.trajectory[0]
             self.ranking = self._slope_ranks(start,observation)
             for i, goal in enumerate(self.goals):
                 goal.masters_rank = self.ranking[i]

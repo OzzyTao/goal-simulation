@@ -27,7 +27,8 @@ class EuclideanCost(CostFunction):
 class NetworkCost(CostFunction):
     def __init__(self, scene, apply_obstacls=True, cost_func_params={}):
         super().__init__(scene, cost_func_params)
-        self.G = self._create_routing_network()
+        # self.G = self._create_routing_network()
+        self.G = self._create_proximity_network()
         if apply_obstacls:
             self._apply_obstacles(self.G)
 
@@ -40,6 +41,23 @@ class NetworkCost(CostFunction):
                 nodes.append((i,j))
         edges = combinations(nodes, 2)
         weighted_edges = list(map(lambda e: (e[0],e[1],NetworkCost.eu_dist(e[0],e[1])),edges))
+        G.add_nodes_from(nodes)
+        G.add_weighted_edges_from(weighted_edges)
+        return G
+    
+    def _create_proximity_network(self):
+        scene_config = self.scene
+        G = nx.Graph()
+        nodes = []
+        weighted_edges = []
+        for i in range(scene_config.width):
+            for j in range(scene_config.height):
+                nodes.append((i,j))
+        edges = combinations(nodes, 2)
+        for u,v in edges:
+            dist = NetworkCost.eu_dist(u,v)
+            if dist < 2:
+                weighted_edges.append((u,v,dist))
         G.add_nodes_from(nodes)
         G.add_weighted_edges_from(weighted_edges)
         return G

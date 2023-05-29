@@ -17,6 +17,7 @@ import cost_funcs as cf
 class Robot(mesa.Agent):
     def __init__(self, unique_id, model, alg_cls):
         super(Robot, self).__init__(unique_id, model)
+        ## state is a tuple (x,y) representing the current location of the robot
         state = model.scene_config.source_loc
         self.state = state
         self.trajectory = np.array(state)
@@ -56,12 +57,13 @@ class Obstacle(mesa.Agent):
         self.cost = 100
 
 class Goal(mesa.Agent):
-    def __init__(self, unique_id, model, dest_pos, cost_func):
+    def __init__(self, unique_id, model, dest_pos, cost_func, ground_truth = False):
         super().__init__(unique_id, model)
         self.cost_func = cost_func
         self.dest_pos = dest_pos
         self.rank = unique_id
         self.benchmark_rank = unique_id
+        self.ground_truth = ground_truth
 
 
 # def get_total_rankings(model):
@@ -70,6 +72,9 @@ class Goal(mesa.Agent):
 # def get_benchmark_rankings(model):
 #     return [goal.benchmark_rank for goal in model.prediction_goals]
 
+def get_segment_number(model):
+    return len(model.recognition_models['Segment'].segments)
+
 def get_agent_cost(agent):
     if isinstance(agent,Goal):
         cur_pos = agent.model.robot.state
@@ -77,6 +82,13 @@ def get_agent_cost(agent):
         return agent.cost_func(pos,agent.dest_pos)
     else:
         return None
+
+def is_obstacle_used(cost_network_obstacle, cost_network, scene_config):
+    source = tuple(scene_config.source_loc)
+    goal = tuple(scene_config.goal_loc)
+    cost_with_obstacle = cost_network_obstacle(source,goal)
+    cost_without_obstacle = cost_network(source,goal)
+    return cost_with_obstacle != cost_without_obstacle
 
 # def get_agent_rank(agent):
 #     if isinstance(agent,Goal):
@@ -91,11 +103,20 @@ def get_agent_cost(agent):
 #         return None
 
 class PathFindingModel(mesa.Model):
-    def __init__(self, width, height, obs_num, goals_num, path_planning_alg = 2, goal_zone=0, seed=None):
+    def __init__(self, width, height, obs_num, goal_zones='0,0', path_planning_alg = 2, intention_profile=0, seed=None):
+        '''
+        width: width of the scene
+        height: height of the scene
+        obs_num: number of obstacles of the scene
+        goal_zones: an integer or a list with the length of goals_num, indicating the zone of each goal
+        path_planning_alg: path planning algorithm for movement simulation
+        intention_profile: 0 for single objective intention and 1 for multi-objective intention
+        '''
         ## config experiment scene
         fscene = scene.FixedScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)))
-        fscene.set_destination(goal_zone)
-        fscene.set_candidate_desinations(goals_num,goal_zone)
+        zones = goal_zones.split(',')
+        fscene.set_destination(zones[0])
+        fscene.set_candidate_desinations(zones[1:] if len(zones) > 1 else [])
         scene_config = fscene.scene
         self.scene_config = scene_config
         self.grid = mesa.space.MultiGrid(width,height,True)
@@ -118,16 +139,27 @@ class PathFindingModel(mesa.Model):
         self.robot = Robot(2000,self,alg_cls)
         
         ## goal recognition: define cost functions for each goal
+
+
         self.prediction_dests = [scene_config.goal_loc] + fscene.destinations
         cost_func_direct = cf.NetworkCost(scene_config,apply_obstacls=False)
         cost_func_avoid = cf.NetworkCost(scene_config,apply_obstacls=True)
-        cost_funcs = [cost_func_direct, cost_func_avoid]
+        cost_funcs = [cost_func_avoid,cost_func_direct] if intention_profile else [cost_func_direct]
         self.prediction_goals = []
         for i, goal in enumerate(self.prediction_dests):
             for j, cost_func in enumerate(cost_funcs):
-                goal_agent = Goal(i*len(cost_funcs)+j,self,tuple(goal),cost_func)
+                if i == 0 and j == 0:
+                    goal_agent = Goal(i*len(cost_funcs)+j,self,tuple(goal),cost_func,ground_truth=True)
+                else:
+                    goal_agent = Goal(i*len(cost_funcs)+j,self,tuple(goal),cost_func)
                 self.grid.place_agent(goal_agent,tuple(goal))
                 self.prediction_goals.append(goal_agent)
+        self.random.shuffle(self.prediction_goals)
+        self.intention_num = len(self.prediction_goals)
+        for index, goal in enumerate(self.prediction_goals):
+            if goal.ground_truth:
+                self.true_intention = index
+        self.obstacle_used = is_obstacle_used(cost_func_avoid,cost_func_direct,scene_config)
         
         ## install all goal recognition models of interest
         self.recognition_models = {'Segment':recognition.OnlineGoalRecognition(scene_config.source_loc,self.prediction_goals),
@@ -135,7 +167,7 @@ class PathFindingModel(mesa.Model):
                                     'Mirroring':recognition.MirroringGoalRecognition(scene_config.source_loc, self.prediction_goals)}
         
         ## variable reportors
-        model_reportor = {'seed':"_seed"}
+        model_reportor = {'seed':"_seed", 'true_intention':"true_intention", 'intention_num':"intention_num", 'obstacle_used':"obstacle_used", 'segment_num':get_segment_number}
         for k in self.recognition_models:
             model_reportor[k+'_ranking'] = self.get_recognition_ranking(k)
         self.datacollector = mesa.DataCollector(

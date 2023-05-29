@@ -83,42 +83,42 @@ class FixedScene:
         xmax = center[0]+dx 
         ymin = center[1]-dy 
         ymax = center[1]+dy
-        if zone_number == 1:
+        if zone_number == '1':
             zone_xmin = 0
             zone_xmax = xmin
             zone_ymin = ymax 
             zone_ymax = self.height 
-        elif zone_number == 2:
+        elif zone_number == '2':
             zone_xmin = xmin
             zone_xmax = xmax 
             zone_ymin = ymax 
             zone_ymax = self.height 
-        elif zone_number == 3:
+        elif zone_number == '3':
             zone_xmin = xmax 
             zone_xmax = self.width
             zone_ymin = ymax 
             zone_ymax = self.height 
-        elif zone_number == 4:
+        elif zone_number == '4':
             zone_xmin = 0
             zone_xmax = xmin
             zone_ymin = ymin
             zone_ymax = ymax
-        elif zone_number == 6:
+        elif zone_number == '6':
             zone_xmin = xmax
             zone_xmax = self.width
             zone_ymin = ymin
             zone_ymax = ymax
-        elif zone_number == 7:
+        elif zone_number == '7':
             zone_xmin = 0
             zone_xmax = xmin
             zone_ymin = 0
             zone_ymax = ymin 
-        elif zone_number == 8:
+        elif zone_number == '8':
             zone_xmin = xmin
             zone_xmax = xmax
             zone_ymin = 0
             zone_ymax = ymin 
-        elif zone_number == 9:
+        elif zone_number == '9':
             zone_xmin = xmax
             zone_xmax = self.width
             zone_ymin = 0
@@ -136,14 +136,13 @@ class FixedScene:
             if (tmp_point != self.scene.source_loc) and (tmp_point not in self.scene.ob):
                 self.scene.goal_loc = tmp_point
     
-    def set_candidate_desinations(self, number, zone_number=0):
+    def set_candidate_desinations(self, zones):
         occupied = self.scene.ob + [self.scene.source_loc, self.scene.goal_loc] + self.destinations
-        i = 0
-        while i<number:
-            tmp_point = self._get_zone_point(zone_number=zone_number)
-            if tmp_point not in occupied:
-                self.destinations.append(tmp_point)
-                occupied.append(tmp_point)
-                i += 1
-        
+        for zone_number in zones:
+            while True:
+                tmp_point = self._get_zone_point(zone_number=zone_number)
+                if tmp_point not in occupied:
+                    self.destinations.append(tmp_point)
+                    occupied.append(tmp_point)
+                    break
 

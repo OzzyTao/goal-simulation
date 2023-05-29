@@ -1,4 +1,4 @@
-def stability(rankings_list):
+def stability(rankings_list, ground_truth_position=1):
     ## the rankings should be ordered based on time
     num = 0
     current_ranking = []
@@ -14,6 +14,13 @@ def correctness(rankings_list, margin=0, ground_truth_position=1):
         if ranking[ground_truth_position]<=margin:
             num += 1
     return num/rankings_list.size
+
+def final_correctness(rankings_list, margin=0, ground_truth_position=1):
+    ranking = rankings_list.iloc[-1]
+    if ranking[ground_truth_position]<=margin:
+        return 1
+    else:
+        return 0
 
 
 def first_correct(rankings_list, margin=0, ground_truth_position=1):
