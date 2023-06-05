@@ -159,7 +159,7 @@ class DynamicWindowAlgorithm(PathPlanningAlgorithm):
         calc obstacle cost inf: collision
         """
         config = self.robot_config
-        ob = np.array(self.scene.ob)
+        ob = np.array(sum(self.scene.obs,[]))
         ox = ob[:, 0]
         oy = ob[:, 1]
         dx = trajectory[:, 0] - ox[:, None]
@@ -249,7 +249,7 @@ class BugPlanner(PathPlanningAlgorithm):
     def __init__(self, scene):
         source = scene.source_loc
         goal = scene.goal_loc
-        obs = scene.ob
+        obs = sum(scene.obs,[])
         self.goal = tuple(goal)
         self.obs = [tuple(ob) for ob in obs]
         self.r = [tuple(source)]

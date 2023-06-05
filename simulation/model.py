@@ -103,7 +103,7 @@ def is_obstacle_used(cost_network_obstacle, cost_network, scene_config):
 #         return None
 
 class PathFindingModel(mesa.Model):
-    def __init__(self, width, height, obs_num, goal_zones='0,0', path_planning_alg = 2, intention_profile=0, seed=None):
+    def __init__(self, width, height, obs_num, goal_zones='0,0', obs_weights = '1000,1000', path_planning_alg = 1, intention_profile=0, seed=None):
         '''
         width: width of the scene
         height: height of the scene
@@ -113,7 +113,10 @@ class PathFindingModel(mesa.Model):
         intention_profile: 0 for single objective intention and 1 for multi-objective intention
         '''
         ## config experiment scene
-        fscene = scene.FixedScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)))
+        weights = obs_weights.split(',')
+        weights = [float(w) for w in weights]
+        # fscene = scene.FixedScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)))
+        fscene = scene.AvoidApproachScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)), weights)
         zones = goal_zones.split(',')
         fscene.set_destination(zones[0])
         fscene.set_candidate_desinations(zones[1:] if len(zones) > 1 else [])
@@ -140,11 +143,12 @@ class PathFindingModel(mesa.Model):
         
         ## goal recognition: define cost functions for each goal
 
+        self.loc = tuple(scene_config.source_loc)
 
         self.prediction_dests = [scene_config.goal_loc] + fscene.destinations
         cost_func_direct = cf.NetworkCost(scene_config,apply_obstacls=False)
         cost_func_avoid = cf.NetworkCost(scene_config,apply_obstacls=True)
-        cost_funcs = [cost_func_avoid,cost_func_direct] if intention_profile else [cost_func_direct]
+        cost_funcs = [cost_func_avoid,cost_func_direct] if intention_profile else [cost_func_avoid]
         self.prediction_goals = []
         for i, goal in enumerate(self.prediction_dests):
             for j, cost_func in enumerate(cost_funcs):
@@ -167,7 +171,13 @@ class PathFindingModel(mesa.Model):
                                     'Mirroring':recognition.MirroringGoalRecognition(scene_config.source_loc, self.prediction_goals)}
         
         ## variable reportors
-        model_reportor = {'seed':"_seed", 'true_intention':"true_intention", 'intention_num':"intention_num", 'obstacle_used':"obstacle_used", 'segment_num':get_segment_number}
+        model_reportor = {'seed':"_seed", 
+                          'true_intention':"true_intention", 
+                          'intention_num':"intention_num", 
+                          'obstacle_used':"obstacle_used", 
+                          'segment_num':get_segment_number,
+                          'destinations':"prediction_dests",
+                          'loc':"loc"}
         for k in self.recognition_models:
             model_reportor[k+'_ranking'] = self.get_recognition_ranking(k)
         self.datacollector = mesa.DataCollector(
@@ -187,7 +197,7 @@ class PathFindingModel(mesa.Model):
         self.grid.place_agent(self.robot,tuple(scene_config.source_loc))
         self.schedule.add(self.robot)
         # place static objects on the grid
-        for i, ob in enumerate(scene_config.ob):
+        for i, ob in enumerate(sum(scene_config.obs,[])):
             ob_agent = Obstacle(1000+i,self)
             self.grid.place_agent(ob_agent, tuple(ob))
         self.running = True
@@ -195,9 +205,9 @@ class PathFindingModel(mesa.Model):
 
     def step(self):
         self.schedule.step()
-        loc = (np.int64(self.robot.state[0]),np.int64(self.robot.state[1]))
+        self.loc = (np.int64(self.robot.state[0]),np.int64(self.robot.state[1]))
         for k in self.recognition_models:
-            self.recognition_models[k].step(loc)
+            self.recognition_models[k].step(self.loc)
         self.datacollector.collect(self)
 
     def get_recognition_ranking(self, model_name):

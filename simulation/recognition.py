@@ -1,6 +1,6 @@
 import networkx as nx
 import numpy as np
-from math import sqrt
+from math import sqrt, exp
 from itertools import combinations
 
 NEG_SLOPE_WEIGHT = 0.5
@@ -102,14 +102,14 @@ class OnlineGoalRecognition:
         ranks = order.argsort()
         return ranks
 
-    def _goal_rank_score(self, goal):
+    def _goal_rank_score(self, goal, exponantioal_recency = True):
         score = 0
         lengths = [len(seg)-1 for seg in self.segments]
         if self.current_segment:
             for i, seg in enumerate(self.segments):
                 length = lengths[i]
                 slope = self._slope(seg[0],seg[-1],goal)/length
-                recency = sum(lengths[i:])
+                recency = sum([exp(x) for x in lengths[i:]]) if exponantioal_recency else sum(lengths[i:])
                 tmp_func = lambda x: 1 if x>0 else NEG_SLOPE_WEIGHT
                 h = tmp_func(slope)
                 score += length*slope/(recency*h)
@@ -135,7 +135,6 @@ class OnlineGoalRecognition:
 
 def construct_euclidean_network(scene_config):
     FULLY_CONNECTED_SIZE = 1
-    obs = [tuple(ob) for ob in scene_config.ob]
     G = nx.grid_2d_graph(scene_config.width, scene_config.height)
     for n in G:
         for dx in range(-FULLY_CONNECTED_SIZE,FULLY_CONNECTED_SIZE+1):
@@ -161,9 +160,10 @@ def construct_euclidean_network(scene_config):
 
 def apply_obstacles_network(scene_config, network):
     G = network.copy()
-    obs = [tuple(ob) for ob in scene_config.ob]
-    for u,v in G.edges(obs):
-        G[u][v]['weight'] = 10000
+    for i, weight in enumerate(scene_config.obs_weights):
+        obs = [tuple(ob) for ob in scene_config.obs[i]]
+        for u,v in G.edges(obs):
+            G[u][v]['weight'] = weight * G[u][v]['weight']
     return G
 
 # def eu_dist(a,b):

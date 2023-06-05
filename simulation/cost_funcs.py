@@ -64,9 +64,10 @@ class NetworkCost(CostFunction):
 
     def _apply_obstacles(self, G):
         scene_config = self.scene
-        obs = [tuple(ob) for ob in scene_config.ob]
-        for u,v in G.edges(obs):
-            G[u][v]['weight'] = 10000
+        for i, weight in enumerate(scene_config.obs_weights):
+            obs = [tuple(ob) for ob in scene_config.obs[i]]
+            for u,v in G.edges(obs):
+                G[u][v]['weight'] = weight * G[u][v]['weight']
 
     def cost_func(self, start, end):
         return nx.astar_path_length(self.G,start,end,heuristic=NetworkCost.eu_dist,weight="weight")

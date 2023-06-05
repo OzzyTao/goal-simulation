@@ -35,7 +35,7 @@ def agent_portrayal(agent):
         "r": 0.5,
     }
 
-grid = mesa.visualization.CanvasGrid(agent_portrayal,20,20,500,500)
+grid = mesa.visualization.CanvasGrid(agent_portrayal,20,40,500,1000)
 server = mesa.visualization.ModularServer(
-    model.PathFindingModel,[grid],"Robot demo", {'width':20,'height':20,'obs_num':40,"goals_num":5,"goal_zone":0,"path_planning_alg":1}
+    model.PathFindingModel,[grid],"Robot demo", {'width':20,'height':40,'obs_num':40,"goal_zones":'2,2,2,2',"path_planning_alg":1}
 )
