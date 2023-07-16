@@ -170,6 +170,7 @@ class PathFindingModel(mesa.Model):
         model_reportor = {'seed':"_seed", 'true_intention':"true_intention", 'intention_num':"intention_num", 'obstacle_used':"obstacle_used", 'segment_num':get_segment_number}
         for k in self.recognition_models:
             model_reportor[k+'_ranking'] = self.get_recognition_ranking(k)
+            model_reportor[k+'_probs'] = self.get_recognition_probs(k)
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reportor
         )
@@ -204,5 +205,11 @@ class PathFindingModel(mesa.Model):
         recognition_model = self.recognition_models[model_name]
         def tmp(model):
             return recognition_model.ranking.tolist()
+        return tmp
+    
+    def get_recognition_probs(self, model_name):
+        recognition_model = self.recognition_models[model_name]
+        def tmp(model):
+            return recognition_model.probs.tolist()
         return tmp
 

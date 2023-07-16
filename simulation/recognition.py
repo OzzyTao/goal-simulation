@@ -5,6 +5,10 @@ from itertools import combinations
 
 NEG_SLOPE_WEIGHT = 0.5
 
+def rank_scores(scores):
+    order = (-np.array(scores)).argsort()
+    ranks = order.argsort()
+    return ranks
 
 class MastersGoalRecognition:
     def __init__(self, source, goals):
@@ -12,24 +16,26 @@ class MastersGoalRecognition:
         self.trajectory = [tuple(source)]
         self.ranking = np.array(range(len(goals)))
 
-    def _slope(self, start, end, goal):
-        return goal.cost_func(start, goal.dest_pos)-goal.cost_func(end,goal.dest_pos)
+    def _costdif(self, start, end, goal):
+        return goal.cost_func(end,goal.dest_pos) - goal.cost_func(start, goal.dest_pos)
+    
+    def _probs(self, costdifs, beta=1):
+        exps = np.exp(-beta*costdifs)
+        values = exps/(1+exps)
+        return values/sum(values)
 
     def _slopes(self, start, end):
         return np.array([self._slope(start,end,goal) for goal in self.goals])
 
-    def _slope_ranks(self, start, end):
-        slopes = self._slopes(start, end)
-        order = (-slopes).argsort()
-        ranks = order.argsort()
-        return ranks
-
     def step(self, observation):
         if self.trajectory:
             start = self.trajectory[0]
-            self.ranking = self._slope_ranks(start,observation)
+            costdifs = np.array([self._costdif(start,observation,goal) for goal in self.goals])
+            self.probs = self._probs(costdifs)
+            self.ranking = rank_scores(self.probs)
             for i, goal in enumerate(self.goals):
                 goal.masters_rank = self.ranking[i]
+                goal.masters_prob = self.probs[i]
         self.trajectory.append(observation)
 
 class MirroringGoalRecognition:
@@ -46,22 +52,24 @@ class MirroringGoalRecognition:
     def _update_prefix(self):
         self.prefix_costs = self.prefix_costs + np.array([goal.cost_func(self.trajectory[-2],self.trajectory[-1]) for goal in self.goals])
 
-    def _ranks(self):
+    def _scores(self):
         scores = []
         for i, goal in enumerate(self.goals):
             optimal_cost = self.optimal_costs[i]
             prefix_cost = self.prefix_costs[i]
             surfix_cost = goal.cost_func(self.trajectory[-1],goal.dest_pos)
             scores.append(optimal_cost/(prefix_cost+surfix_cost))
-        order = (-np.array(scores)).argsort()
-        return order.argsort()
+        return scores
 
     def step(self, observation):
         self.trajectory.append(observation)
         self._update_prefix()
-        self.ranking = self._ranks()
+        scores = self._scores()
+        self.ranking = rank_scores(scores)
+        self.probs = np.array(scores)/sum(scores)
         for i, goal in enumerate(self.goals):
             goal.mirroring_rank = self.ranking[i]
+            goal.mirroring_prob = self.probs[i]
 
 
 class OnlineGoalRecognition:
@@ -129,9 +137,12 @@ class OnlineGoalRecognition:
     def step(self, observation):
         self._segment(observation)
         #update goal object
-        self.ranking = self._goal_ranks()
+        scores = np.array([self._goal_rank_score(goal) for goal in self.goals])
+        self.probs = scores/sum(scores)
+        self.ranking = rank_scores(scores)
         for i,goal in enumerate(self.goals):
             goal.rank = self.ranking[i]
+            goal.prob = self.probs[i]
 
 def construct_euclidean_network(scene_config):
     FULLY_CONNECTED_SIZE = 1
