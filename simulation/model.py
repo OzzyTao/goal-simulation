@@ -90,6 +90,7 @@ def is_obstacle_used(cost_network_obstacle, cost_network, scene_config):
     cost_without_obstacle = cost_network(source,goal)
     return cost_with_obstacle != cost_without_obstacle
 
+
 # def get_agent_rank(agent):
 #     if isinstance(agent,Goal):
 #         return agent.rank
@@ -103,7 +104,7 @@ def is_obstacle_used(cost_network_obstacle, cost_network, scene_config):
 #         return None
 
 class PathFindingModel(mesa.Model):
-    def __init__(self, width, height, obs_num, goal_zones='0,0', obs_weights = '1000,1000', path_planning_alg = 1, intention_profile=0, seed=None):
+    def __init__(self, width, height, obs_num, goal_locs='[(1,2),(2,3)]', obs_weights = '1000,1000', path_planning_alg = 1, intention_profile=0, seed=None):
         '''
         width: width of the scene
         height: height of the scene
@@ -117,9 +118,9 @@ class PathFindingModel(mesa.Model):
         weights = [float(w) for w in weights]
         # fscene = scene.FixedScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)))
         fscene = scene.AvoidApproachScene(self.random,width,height,int(math.sqrt(obs_num)), int(math.sqrt(obs_num)), weights)
-        zones = goal_zones.split(',')
-        fscene.set_destination(zones[0])
-        fscene.set_candidate_desinations(zones[1:] if len(zones) > 1 else [])
+        dests = eval(goal_locs)
+        fscene.set_destination(dests[0])
+        fscene.set_candidate_desinations(dests[1:] if len(dests) > 1 else [])
         scene_config = fscene.scene
         self.scene_config = scene_config
         self.grid = mesa.space.MultiGrid(width,height,True)
@@ -172,14 +173,9 @@ class PathFindingModel(mesa.Model):
         
         ## variable reportors
         model_reportor = {'seed':"_seed", 
-                          'true_intention':"true_intention", 
-                          'intention_num':"intention_num", 
                           'obstacle_used':"obstacle_used", 
-                          'segment_num':get_segment_number,
                           'destinations':"prediction_dests",
                           'loc':"loc"}
-        for k in self.recognition_models:
-            model_reportor[k+'_ranking'] = self.get_recognition_ranking(k)
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reportor
         )

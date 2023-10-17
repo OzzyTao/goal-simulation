@@ -174,3 +174,10 @@ class AvoidApproachScene(FixedScene):
         source = [center[0],1]
         target = []
         return SceneConfig(self.width,self.height,obs,source,target,self.weights)
+    
+    def set_destination(self, des_loc):
+        self.scene.goal_loc = des_loc
+
+    def set_candidate_desinations(self, locs):
+        for loc in locs:
+            self.destinations.append(loc)
