@@ -10,8 +10,13 @@ def rank_scores(scores):
     ranks = order.argsort()
     return ranks
 
-class MastersGoalRecognition:
+class GoalRecognition:
+    def __init__(self) -> None:
+        self.step_time = 0
+
+class MastersGoalRecognition(GoalRecognition):
     def __init__(self, source, goals):
+        super().__init__()
         self.goals = goals
         self.trajectory = [tuple(source)]
         self.ranking = np.array(range(len(goals)))
@@ -38,8 +43,9 @@ class MastersGoalRecognition:
                 goal.masters_prob = self.probs[i]
         self.trajectory.append(observation)
 
-class MirroringGoalRecognition:
+class MirroringGoalRecognition(GoalRecognition):
     def __init__(self, source, goals) -> None:
+        super().__init__()
         self.goals = goals 
         self.prefix_costs = np.zeros(len(goals))
         self.trajectory = [tuple(source)]
@@ -72,9 +78,10 @@ class MirroringGoalRecognition:
             goal.mirroring_prob = self.probs[i]
 
 
-class OnlineGoalRecognition:
+class OnlineGoalRecognition(GoalRecognition):
     def __init__(self, source, goals):
         # each goal has a destination and a cost function
+        super().__init__()
         self.goals = goals
 
         self.current_segment = [tuple(source)]
@@ -110,7 +117,8 @@ class OnlineGoalRecognition:
         ranks = order.argsort()
         return ranks
 
-    def _goal_rank_score(self, goal):
+    def _goal_rank_score(self, goal_idx):
+        goal = self.goals[goal_idx]
         score = 0
         lengths = [len(seg)-1 for seg in self.segments]
         if self.current_segment:
@@ -129,7 +137,7 @@ class OnlineGoalRecognition:
         return score
 
     def _goal_ranks(self):
-        scores = np.array([self._goal_rank_score(goal) for goal in self.goals])
+        scores = np.array([self._goal_rank_score(i) for i in range(len(self.goals))])
         order = (-scores).argsort()
         ranks = order.argsort()
         return ranks
@@ -137,8 +145,8 @@ class OnlineGoalRecognition:
     def step(self, observation):
         self._segment(observation)
         #update goal object
-        scores = np.array([self._goal_rank_score(goal) for goal in self.goals])
-        self.probs = scores/sum(scores)
+        scores = np.array([self._goal_rank_score(i) for i in range(len(self.goals))])
+        self.probs = scores/sum(scores) if sum(scores)!=0 else np.zeros(len(scores))
         self.ranking = rank_scores(scores)
         for i,goal in enumerate(self.goals):
             goal.rank = self.ranking[i]
@@ -157,18 +165,6 @@ def construct_euclidean_network(scene_config):
                     G.add_edge(n,target,weight=weight)
     return G
 
-# def construct_full_network(scene_config):
-#     G = nx.Graph()
-#     nodes = []
-#     for i in range(scene_config.width):
-#         for j in range(scene_config.height):
-#             nodes.append((i,j))
-#     edges = combinations(nodes, 2)
-#     weighted_edges = list(map(lambda e: (e[0],e[1],eu_dist(e[0],e[1])),edges))
-#     G.add_nodes_from(nodes)
-#     G.add_weighted_edges_from(weighted_edges)
-#     return G
-
 
 def apply_obstacles_network(scene_config, network):
     G = network.copy()
@@ -177,10 +173,39 @@ def apply_obstacles_network(scene_config, network):
         G[u][v]['weight'] = 10000
     return G
 
-# def eu_dist(a,b):
-#     (x1,y1) = a
-#     (x2,y2) = b
-#     return sqrt((x1-x2)**2+(y1-y2)**2)
 
-# def calculate_cost_network(network, source, target):
-#     return nx.astar_path_length(network,source,target,heuristic=eu_dist,weight="weight")
+
+class FastIntentionRecognition(OnlineGoalRecognition):
+    def __init__(self, source, goals):
+        super().__init__(source, goals)
+        self.segment_scores = [[] for i in range(len(goals))]   # len(goals) * len(segments)
+        self.segment_score_sum =  np.zeros(len(goals))
+
+    def _compute_segment_score(self, segment, goal):
+        length = len(segment) -1
+        slope = self._slope(segment[0],segment[-1],goal)/length
+        tmp_func = lambda x: 1 if x>0 else NEG_SLOPE_WEIGHT
+        h = tmp_func(slope)
+        return length*slope/h
+        
+
+    def _goal_rank_score(self, goal_idx):
+        score = 0
+        goal = self.goals[goal_idx]
+        lengths = [len(seg)-1 for seg in self.segments]
+        if len(self.segments) != len(self.segment_scores[goal_idx]):
+            segment_score = self._compute_segment_score(self.segments[-1], goal)
+            self.segment_scores[goal_idx].append(segment_score)
+            self.segment_score_sum[goal_idx]  = 0
+            for i, score in enumerate(self.segment_scores[goal_idx]):
+                recency = sum(lengths[i:])
+                self.segment_score_sum[goal_idx] += score/recency
+            score = self.segment_score_sum[goal_idx]
+        if self.current_segment:
+            segment_score = self._compute_segment_score(self.current_segment, goal)
+            score += segment_score
+        return score
+
+    
+
+

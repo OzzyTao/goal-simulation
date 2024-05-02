@@ -11,6 +11,7 @@ import recognition
 import scene
 import path_planning as pp
 import cost_funcs as cf
+import time
 
 
 
@@ -165,12 +166,14 @@ class PathFindingModel(mesa.Model):
         self.recognition_models = {'Segment':recognition.OnlineGoalRecognition(scene_config.source_loc,self.prediction_goals),
                                     'Masters':recognition.MastersGoalRecognition(scene_config.source_loc, self.prediction_goals),
                                     'Mirroring':recognition.MirroringGoalRecognition(scene_config.source_loc, self.prediction_goals)}
+        #  'FastSegment':recognition.FastIntentionRecognition(scene_config.source_loc,self.prediction_goals),
         
         ## variable reportors
         model_reportor = {'seed':"_seed", 'true_intention':"true_intention", 'intention_num':"intention_num", 'obstacle_used':"obstacle_used", 'segment_num':get_segment_number}
         for k in self.recognition_models:
             model_reportor[k+'_ranking'] = self.get_recognition_ranking(k)
             model_reportor[k+'_probs'] = self.get_recognition_probs(k)
+            # model_reportor[k+'_step_time'] = self.get_recognition_step_time(k)
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reportor
         )
@@ -198,7 +201,10 @@ class PathFindingModel(mesa.Model):
         self.schedule.step()
         loc = (np.int64(self.robot.state[0]),np.int64(self.robot.state[1]))
         for k in self.recognition_models:
+            start = time.time()
             self.recognition_models[k].step(loc)
+            end = time.time()
+            self.recognition_models[k].step_time = end - start
         self.datacollector.collect(self)
 
     def get_recognition_ranking(self, model_name):
@@ -211,5 +217,11 @@ class PathFindingModel(mesa.Model):
         recognition_model = self.recognition_models[model_name]
         def tmp(model):
             return recognition_model.probs.tolist()
+        return tmp
+    
+    def get_recognition_step_time(self, model_name):
+        recognition_model = self.recognition_models[model_name]
+        def tmp(model):
+            return recognition_model.step_time
         return tmp
 
