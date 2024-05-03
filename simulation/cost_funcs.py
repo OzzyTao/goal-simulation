@@ -3,7 +3,7 @@ The cost functions are used by the recognition algorithms to rank the goals.
 The cost functions are also used by the simulation to calculate the cost of a trajectory."""
 
 
-import osrm
+# import osrm
 import numpy as np
 import networkx as nx
 from itertools import combinations
@@ -74,15 +74,15 @@ class NetworkCost(CostFunction):
     def eu_dist(start, end):
         return np.linalg.norm(np.array(start)-np.array(end))
 
-class OSRMCost(CostFunction):
-    def __init__(self, scene, osrm_host, osrm_profile, cost_func_params={}):
-        super().__init__(scene, cost_func_params)
-        self.osrm_config = osrm.DefaultRequestConfig()
-        self.osrm_config.host = osrm_host
-        self.osrm_config.profile = osrm_profile
+# class OSRMCost(CostFunction):
+#     def __init__(self, scene, osrm_host, osrm_profile, cost_func_params={}):
+#         super().__init__(scene, cost_func_params)
+#         self.osrm_config = osrm.DefaultRequestConfig()
+#         self.osrm_config.host = osrm_host
+#         self.osrm_config.profile = osrm_profile
 
-    def cost_func(self, start, end):
-        results = osrm.simple_route(start, end, url_config= self.osrm_config)
-        if results:
-            return results[0]['distance']
-        return 1000000000
+#     def cost_func(self, start, end):
+#         results = osrm.simple_route(start, end, url_config= self.osrm_config)
+#         if results:
+#             return results[0]['distance']
+#         return 1000000000
